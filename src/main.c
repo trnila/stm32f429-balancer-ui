@@ -28,6 +28,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "FreeRTOS.h"
 
 /** @addtogroup STM32F429I_DISCOVERY_Examples
   * @{
@@ -150,12 +151,17 @@ void USART6_IRQHandler() {
 	}
 }
 
-/**
-  * @brief   Main program
-  * @param  None
-  * @retval None
-  */
-int main(void)
+void mainTask(void* arg);
+
+int main() {
+	xTaskCreate(mainTask, "Main", 512, NULL, 1, NULL);
+	vTaskStartScheduler();
+
+	for(;;);
+}
+
+
+void mainTask(void* arg)
 {
   uint16_t linenum = 0;
   static TP_STATE* TP_State; 
