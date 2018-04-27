@@ -50,8 +50,8 @@ static void TP_Config(void);
 
 void s(const char *data, int size) {
 	while(size--) {
-		while( !(USART3->SR & 0x00000040) );
-		USART_SendData(USART3, *data);
+		while( !(USART6->SR & 0x00000040) );
+		USART_SendData(USART6, *data);
 		data++;
 	}
 
@@ -63,10 +63,12 @@ void uart_init() {
 
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, ENABLE);
 
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOG, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOG, ENABLE);
 
 /*	GPIO_StructInit(&gpioa_init_struct);
 	gpioa_init_struct.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
@@ -74,12 +76,12 @@ void uart_init() {
 	gpioa_init_struct.GPIO_Mode = GPIO_Mode_OUT;
 	gpioa_init_struct.GPIO_OType = GPIO_OType_PP;
 	gpioa_init_struct.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOB, &gpioa_init_struct);
+	GPIO_Init(GPIOG, &gpioa_init_struct);
 
 	for(;;) {
-		GPIO_ToggleBits(GPIOB, GPIO_Pin_10);
+		GPIO_ToggleBits(GPIOG, GPIO_Pin_10);
 		for(int index = (10000); index != 0; index--);
-		GPIO_ToggleBits(GPIOB, GPIO_Pin_11);
+		GPIO_ToggleBits(GPIOG, GPIO_Pin_11);
 		for(int index = (10000); index != 0; index--);
 	}*/
 
@@ -87,15 +89,15 @@ void uart_init() {
 
 
 	/* GPIOA PIN9 alternative function Tx */
-	gpioa_init_struct.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
+	gpioa_init_struct.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_14;
 	gpioa_init_struct.GPIO_Speed = GPIO_Speed_50MHz;
 	gpioa_init_struct.GPIO_Mode = GPIO_Mode_AF;
 	gpioa_init_struct.GPIO_PuPd = GPIO_PuPd_UP;
 	gpioa_init_struct.GPIO_OType = GPIO_OType_PP;
-	GPIO_Init(GPIOB, &gpioa_init_struct);
+	GPIO_Init(GPIOG, &gpioa_init_struct);
 
-	GPIO_PinAFConfig(GPIOB, GPIO_PinSource10, GPIO_AF_USART3);
-		GPIO_PinAFConfig(GPIOB, GPIO_PinSource11, GPIO_AF_USART3);
+	GPIO_PinAFConfig(GPIOG, GPIO_PinSource9, GPIO_AF_USART6);
+		GPIO_PinAFConfig(GPIOG, GPIO_PinSource14, GPIO_AF_USART6);
 
 
 	/* Enable USART2 */
@@ -110,7 +112,7 @@ void uart_init() {
 	usart1_init_struct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 	usart1_init_struct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	/* Configure USART2 */
-	USART_Init(USART3, &usart1_init_struct);
+	USART_Init(USART6, &usart1_init_struct);
 
 	/* Enable RXNE interrupt */
 	/*USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
@@ -118,7 +120,7 @@ void uart_init() {
 	/*NVIC_EnableIRQ(USART2_IRQn);*/
 
 
-	USART_Cmd(USART3, ENABLE);
+	USART_Cmd(USART6, ENABLE);
 }
 
 
