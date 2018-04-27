@@ -46,6 +46,80 @@ static void TP_Config(void);
 
 /* Private functions ---------------------------------------------------------*/
 
+#include "stm32f4xx.h"
+void uart_init() {
+	USART_InitTypeDef usart1_init_struct;
+	GPIO_InitTypeDef gpioa_init_struct;
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+
+/*	GPIO_StructInit(&gpioa_init_struct);
+	gpioa_init_struct.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
+	gpioa_init_struct.GPIO_Speed = GPIO_Speed_25MHz;
+	gpioa_init_struct.GPIO_Mode = GPIO_Mode_OUT;
+	gpioa_init_struct.GPIO_OType = GPIO_OType_PP;
+	gpioa_init_struct.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOB, &gpioa_init_struct);
+
+	for(;;) {
+		GPIO_ToggleBits(GPIOB, GPIO_Pin_10);
+		for(int index = (10000); index != 0; index--);
+		GPIO_ToggleBits(GPIOB, GPIO_Pin_11);
+		for(int index = (10000); index != 0; index--);
+	}*/
+
+
+
+
+	/* GPIOA PIN9 alternative function Tx */
+	gpioa_init_struct.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
+	gpioa_init_struct.GPIO_Speed = GPIO_Speed_50MHz;
+	gpioa_init_struct.GPIO_Mode = GPIO_Mode_AF;
+	gpioa_init_struct.GPIO_PuPd = GPIO_PuPd_UP;
+	gpioa_init_struct.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIOB, &gpioa_init_struct);
+
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource10, GPIO_AF_USART3);
+		GPIO_PinAFConfig(GPIOB, GPIO_PinSource11, GPIO_AF_USART3);
+
+
+	/* Enable USART2 */
+
+	/* Baud rate 9600, 8-bit data, One stop bit
+	 * No parity, Do both Rx and Tx, No HW flow control
+	 */
+	usart1_init_struct.USART_BaudRate = 9600;
+	usart1_init_struct.USART_WordLength = USART_WordLength_8b;
+	usart1_init_struct.USART_StopBits = USART_StopBits_1;
+	usart1_init_struct.USART_Parity = USART_Parity_No ;
+	usart1_init_struct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+	usart1_init_struct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	/* Configure USART2 */
+	USART_Init(USART3, &usart1_init_struct);
+
+	/* Enable RXNE interrupt */
+	/*USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+	/* Enable USART2 global interrupt */
+	/*NVIC_EnableIRQ(USART2_IRQn);*/
+
+
+	USART_Cmd(USART3, ENABLE);
+
+
+	for(;;) {
+		USART_SendData(USART3, 'D');
+
+		  for(int index = (100000); index != 0; index--)
+		  {
+		  }
+	}
+
+}
 
 /**
   * @brief   Main program
@@ -64,6 +138,8 @@ int main(void)
   system_stm32f4xx.c file
   */
 
+
+  uart_init();
 
 
   /* LCD initiatization */
