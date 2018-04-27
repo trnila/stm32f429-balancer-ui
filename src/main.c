@@ -185,7 +185,8 @@ int main(void)
   TP_Config();
 
   uart_init();
-    
+
+  int layer = 0;
   while (1)
   {
  
@@ -193,13 +194,19 @@ int main(void)
     
     s("DA", 2);
 
-	  //LCD_Clear(LCD_COLOR_WHITE);
-	  //LCD_DrawFullCircle(x, y, 10);
+    while (!(LTDC->CDSR & LTDC_CDSR_VSYNCS));
+    LTDC_LayerCmd(LTDC_Layer1 + layer, ENABLE);
+    layer ^= 0x1;
+    LCD_SetLayer(layer);
+    LTDC_LayerCmd(LTDC_Layer1 + layer, DISABLE);
 
-	  LCD_Clear(LCD_COLOR_WHITE);
+
+
+    LCD_SetTextColor(LCD_COLOR_YELLOW);
+    LCD_DrawFullRect(0, 0, LCD_PIXEL_WIDTH, LCD_PIXEL_HEIGHT);
+
+    LCD_SetTextColor(LCD_COLOR_BLACK);
 	  LCD_DrawFullCircle(94, 130, 10);
-
-	  for(int i = 100000; i--; ) {}
 
     if((TP_State->TouchDetected) && ((TP_State->Y < LCD_PIXEL_HEIGHT - 3) && (TP_State->Y >= 3)))
     {
@@ -207,7 +214,7 @@ int main(void)
       {}
       else
       {
-    	  LCD_Clear(LCD_COLOR_WHITE);
+    	  //LCD_Clear(LCD_COLOR_WHITE);
         LCD_DrawFullCircle(TP_State->X, TP_State->Y, 10);
       }
     }
