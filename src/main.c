@@ -47,6 +47,16 @@ static void TP_Config(void);
 /* Private functions ---------------------------------------------------------*/
 
 #include "stm32f4xx.h"
+
+void s(const char *data, int size) {
+	while(size--) {
+		while( !(USART3->SR & 0x00000040) );
+		USART_SendData(USART3, *data);
+		data++;
+	}
+
+}
+
 void uart_init() {
 	USART_InitTypeDef usart1_init_struct;
 	GPIO_InitTypeDef gpioa_init_struct;
@@ -109,17 +119,8 @@ void uart_init() {
 
 
 	USART_Cmd(USART3, ENABLE);
-
-
-	for(;;) {
-		USART_SendData(USART3, 'D');
-
-		  for(int index = (100000); index != 0; index--)
-		  {
-		  }
-	}
-
 }
+
 
 /**
   * @brief   Main program
@@ -139,8 +140,6 @@ int main(void)
   */
 
 
-  uart_init();
-
 
   /* LCD initiatization */
   LCD_Init();
@@ -157,13 +156,15 @@ int main(void)
   /* Touch Panel configuration */
   TP_Config();
 
-
+  uart_init();
     
   while (1)
   {
  
     TP_State = IOE_TP_GetState();
     
+    s("DA", 2);
+
     if((TP_State->TouchDetected) && ((TP_State->Y < LCD_PIXEL_HEIGHT - 3) && (TP_State->Y >= 3)))
     {
       if((TP_State->X >= LCD_PIXEL_WIDTH - 3) || (TP_State->X < 3))
