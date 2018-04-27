@@ -144,9 +144,9 @@ void USART6_IRQHandler() {
 			x = buffer[0];
 			y = buffer[1];
 			pos = 0;
+		} else {
+			pos = (pos + 1) % sizeof(buffer);
 		}
-
-		pos = (pos + 1) % sizeof(buffer);
 	}
 }
 
@@ -206,7 +206,7 @@ int main(void)
     LCD_DrawFullRect(0, 0, LCD_PIXEL_WIDTH, LCD_PIXEL_HEIGHT);
 
     LCD_SetTextColor(LCD_COLOR_BLACK);
-	  LCD_DrawFullCircle(94, 130, 10);
+	  LCD_DrawFullCircle(x * (LCD_PIXEL_WIDTH - 20) / 255 + 10, y * (LCD_PIXEL_HEIGHT - 20) / 255 + 10, 10);
 
     if((TP_State->TouchDetected) && ((TP_State->Y < LCD_PIXEL_HEIGHT - 3) && (TP_State->Y >= 3)))
     {
