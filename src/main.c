@@ -115,14 +115,40 @@ void uart_init() {
 	USART_Init(USART6, &usart1_init_struct);
 
 	/* Enable RXNE interrupt */
-	/*USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+	USART_ITConfig(USART6, USART_IT_RXNE, ENABLE);
+
+	NVIC_InitTypeDef NVIC_InitStructure; // this is used to configure the NVIC (nested vector interrupt controller)
+	NVIC_InitStructure.NVIC_IRQChannel = USART6_IRQn;		 // we want to configure the USART1 interrupts
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;// this sets the priority group of the USART1 interrupts
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;		 // this sets the subpriority inside the group
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			 // the USART1 interrupts are globally enabled
+	NVIC_Init(&NVIC_InitStructure);
+
 	/* Enable USART2 global interrupt */
-	/*NVIC_EnableIRQ(USART2_IRQn);*/
+	NVIC_EnableIRQ(USART6_IRQn);
 
 
 	USART_Cmd(USART6, ENABLE);
 }
 
+uint8_t buffer[8];
+int pos = 0;
+
+int x = 0, y = 0;
+
+void USART6_IRQHandler() {
+	if( USART_GetITStatus(USART6, USART_IT_RXNE) ){
+		buffer[pos] = USART6->DR;
+
+		if(pos >= 1) {
+			x = buffer[0];
+			y = buffer[1];
+			pos = 0;
+		}
+
+		pos = (pos + 1) % sizeof(buffer);
+	}
+}
 
 /**
   * @brief   Main program
@@ -166,6 +192,14 @@ int main(void)
     TP_State = IOE_TP_GetState();
     
     s("DA", 2);
+
+	  //LCD_Clear(LCD_COLOR_WHITE);
+	  //LCD_DrawFullCircle(x, y, 10);
+
+	  LCD_Clear(LCD_COLOR_WHITE);
+	  LCD_DrawFullCircle(94, 130, 10);
+
+	  for(int i = 100000; i--; ) {}
 
     if((TP_State->TouchDetected) && ((TP_State->Y < LCD_PIXEL_HEIGHT - 3) && (TP_State->Y >= 3)))
     {
