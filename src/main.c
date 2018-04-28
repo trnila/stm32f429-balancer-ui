@@ -9,6 +9,8 @@
 
 int x, y;
 
+int display_layer = 0;
+
 void uartTask(void* arg) {
 	uart_init();
 
@@ -28,42 +30,39 @@ void display_init() {
 	TP_Config();
 }
 
+void swap_buffers() {
+	//while (!(LTDC->CDSR & LTDC_CDSR_VSYNCS));
+	LTDC_LayerCmd(LTDC_Layer1 + display_layer, ENABLE);
+	display_layer ^= 0x1;
+	LCD_SetLayer(display_layer);
+	LTDC_LayerCmd(LTDC_Layer1 + display_layer, DISABLE);
+}
+
 void mainTask(void* arg) {
-  TP_STATE* TP_State;
-
-  int layer = 0;
-  while (1)
-  {
-	  vTaskDelay(30);
-
-    TP_State = IOE_TP_GetState();
-    
-    //s("DA", 2);
-
-    //while (!(LTDC->CDSR & LTDC_CDSR_VSYNCS));
-    LTDC_LayerCmd(LTDC_Layer1 + layer, ENABLE);
-    layer ^= 0x1;
-    LCD_SetLayer(layer);
-    LTDC_LayerCmd(LTDC_Layer1 + layer, DISABLE);
+	TP_STATE* TP_State;
 
 
+	for(;;) {
+		TP_State = IOE_TP_GetState();
 
-    LCD_SetTextColor(LCD_COLOR_YELLOW);
-    LCD_DrawFullRect(0, 0, LCD_PIXEL_WIDTH, LCD_PIXEL_HEIGHT);
+		// use double buffering - render from one buffer, draw to another one
+		swap_buffers();
 
-    LCD_SetTextColor(LCD_COLOR_BLACK);
-	  LCD_DrawFullCircle(x * (LCD_PIXEL_WIDTH - 20) / 255 + 10, y * (LCD_PIXEL_HEIGHT - 20) / 255 + 10, 10);
+		// clear screen
+		LCD_SetTextColor(LCD_COLOR_YELLOW);
+		LCD_DrawFullRect(0, 0, LCD_PIXEL_WIDTH, LCD_PIXEL_HEIGHT);
 
-    if((TP_State->TouchDetected) && ((TP_State->Y < LCD_PIXEL_HEIGHT - 3) && (TP_State->Y >= 3)))
-    {
-      if((TP_State->X >= LCD_PIXEL_WIDTH - 3) || (TP_State->X < 3))
-      {}
-      else
-      {
-    	  ctrl_sendtarget(TP_State->X * 255 / LCD_PIXEL_WIDTH, TP_State->Y * 255 / LCD_PIXEL_HEIGHT);
-      }
-    }
-  }
+		// draw circle
+		LCD_SetTextColor(LCD_COLOR_BLACK);
+		LCD_DrawFullCircle(x * (LCD_PIXEL_WIDTH - 20) / 255 + 10, y * (LCD_PIXEL_HEIGHT - 20) / 255 + 10, 10);
+
+		if(TP_State->TouchDetected) {
+
+			ctrl_sendtarget(TP_State->X * 255 / LCD_PIXEL_WIDTH, TP_State->Y * 255 / LCD_PIXEL_HEIGHT);
+		}
+
+		vTaskDelay(30);
+	}
 }
 
 void TP_Config(void) {
