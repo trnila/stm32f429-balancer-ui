@@ -29,6 +29,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "FreeRTOS.h"
+#include "queue.h"
+#include "task.h"
 
 /** @addtogroup STM32F429I_DISCOVERY_Examples
   * @{
@@ -116,14 +118,17 @@ void uart_init() {
 	USART_Init(USART6, &usart1_init_struct);
 
 	/* Enable RXNE interrupt */
-	USART_ITConfig(USART6, USART_IT_RXNE, ENABLE);
 
 	NVIC_InitTypeDef NVIC_InitStructure; // this is used to configure the NVIC (nested vector interrupt controller)
 	NVIC_InitStructure.NVIC_IRQChannel = USART6_IRQn;		 // we want to configure the USART1 interrupts
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;// this sets the priority group of the USART1 interrupts
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;// this sets the priority group of the USART1 interrupts
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;		 // this sets the subpriority inside the group
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			 // the USART1 interrupts are globally enabled
 	NVIC_Init(&NVIC_InitStructure);
+
+	NVIC_SetPriority(USART6_IRQn, 15);
+
+	USART_ITConfig(USART6, USART_IT_RXNE, ENABLE);
 
 	/* Enable USART2 global interrupt */
 	NVIC_EnableIRQ(USART6_IRQn);
@@ -132,29 +137,67 @@ void uart_init() {
 	USART_Cmd(USART6, ENABLE);
 }
 
-uint8_t buffer[8];
+#define BUFFER_MAX 8
+uint8_t buffer[BUFFER_MAX];
 int pos = 0;
 
 int x = 0, y = 0;
+QueueHandle_t rx_queue;
+
 
 void USART6_IRQHandler() {
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+	volatile int ret = 111;
+
 	if( USART_GetITStatus(USART6, USART_IT_RXNE) ){
 		buffer[pos] = USART6->DR;
 
 		if(pos >= 1) {
-			x = buffer[0];
-			y = buffer[1];
+			//x = buffer[0];
+			//y = buffer[1];
 			pos = 0;
+
+			ret = xQueueSendFromISR(rx_queue, buffer, &xHigherPriorityTaskWoken);
 		} else {
 			pos = (pos + 1) % sizeof(buffer);
 		}
 	}
+
+	portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
 }
 
 void mainTask(void* arg);
 
+int a;
+void uartTask(void* arg) {
+	uart_init();
+
+	char buffer[BUFFER_MAX];
+	for(;;) {
+		xQueueReceive(rx_queue, buffer, portMAX_DELAY);
+		x = buffer[0];
+		y = buffer[1];
+	}
+}
+
 int main() {
+	NVIC_SetPriority(PendSV_IRQn, 15);
+	NVIC_PriorityGroupConfig( NVIC_PriorityGroup_4 );
+
+
+	  LCD_Init();
+
+	  LCD_LayerInit();
+	  LTDC_Cmd(ENABLE);
+	  LCD_SetLayer(LCD_FOREGROUND_LAYER);
+	  TP_Config();
+
+
+	rx_queue = xQueueCreate(BUFFER_MAX, 10);
+	assert_param(rx_queue);
+
 	xTaskCreate(mainTask, "Main", 512, NULL, 1, NULL);
+	xTaskCreate(uartTask, "test", 512, NULL, 2, NULL);
 	vTaskStartScheduler();
 
 	for(;;);
@@ -163,44 +206,20 @@ int main() {
 
 void mainTask(void* arg)
 {
-  uint16_t linenum = 0;
   static TP_STATE* TP_State; 
-    
-  /*!< At this stage the microcontroller clock setting is already configured, 
-  this is done through SystemInit() function which is called from startup
-  file (startup_stm32f429_439xx.s) before to branch to application main.
-  To reconfigure the default setting of SystemInit() function, refer to
-  system_stm32f4xx.c file
-  */
-
-
-
-  /* LCD initiatization */
-  LCD_Init();
-  
-  /* LCD Layer initiatization */
-  LCD_LayerInit();
-    
-  /* Enable the LTDC */
-  LTDC_Cmd(ENABLE);
-  
-  /* Set LCD foreground layer */
-  LCD_SetLayer(LCD_FOREGROUND_LAYER);
-  
-  /* Touch Panel configuration */
-  TP_Config();
-
-  uart_init();
 
   int layer = 0;
   while (1)
   {
- 
+	  a = 22;
+
+	  vTaskDelay(100);
+
     TP_State = IOE_TP_GetState();
     
-    s("DA", 2);
+    //s("DA", 2);
 
-    while (!(LTDC->CDSR & LTDC_CDSR_VSYNCS));
+    //while (!(LTDC->CDSR & LTDC_CDSR_VSYNCS));
     LTDC_LayerCmd(LTDC_Layer1 + layer, ENABLE);
     layer ^= 0x1;
     LCD_SetLayer(layer);

@@ -30,6 +30,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_it.h"
 #include "main.h"
+#include "FreeRTOS.h"
+#include "portmacro.h"
     
 /** @addtogroup STM32F429I_DISCOVERY_Examples
   * @{
@@ -143,9 +145,7 @@ void __attribute__((weak)) PendSV_Handler(void)
   * @param  None
   * @retval None
   */
-void SysTick_Handler(void)
-{
-}
+
 
 /******************************************************************************/
 /*                 STM32F4xx Peripherals Interrupt Handlers                   */
