@@ -213,7 +213,7 @@ void mainTask(void* arg)
   {
 	  a = 22;
 
-	  vTaskDelay(100);
+	  vTaskDelay(30);
 
     TP_State = IOE_TP_GetState();
     
@@ -240,7 +240,9 @@ void mainTask(void* arg)
       else
       {
     	  //LCD_Clear(LCD_COLOR_WHITE);
-        LCD_DrawFullCircle(TP_State->X, TP_State->Y, 10);
+        //LCD_DrawFullCircle(TP_State->X, TP_State->Y, 10);
+    	  uint8_t data[2] = {TP_State->X * 255 / LCD_PIXEL_WIDTH, TP_State->Y * 255 / LCD_PIXEL_HEIGHT};
+    	  s(data, 2);
       }
     }
   }
