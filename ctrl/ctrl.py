@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import queue
-
+import argparse
 import serial
 import random
 import struct
@@ -12,11 +12,15 @@ import requests
 import json
 from cobs import cobs
 
-BASE_ADDR = "http://172.20.6.43"
+parser = argparse.ArgumentParser()
+parser.add_argument('--api-url', required=True, help='url of balancer api server')
+parser.add_argument('--serial', required=True, help='path to serial device, ie. /dev/ttyUSB0')
+parser.add_argument('--baudrate', default=9600, help='serial device baud rate')
 
-s = serial.Serial("/dev/ttyUSB0", baudrate=9600, timeout=0.02)
+args = parser.parse_args()
 
-response = requests.get("{}/events/measurements".format(BASE_ADDR), stream=True)
+s = serial.Serial(args.serial, baudrate=args.baudrate, timeout=0.02)
+response = requests.get("{}/events/measurements".format(args.api_url), stream=True)
 client = sseclient.SSEClient(response)
 
 width = 0
@@ -54,7 +58,7 @@ def command_processor():
             y = int(height - y * height / 255)
 
             # TODO: throttle
-            requests.put("{}/api/set_target".format(BASE_ADDR), json={'X': x, 'Y': y})
+            requests.put("{}/api/set_target".format(args.api_url), json={'X': x, 'Y': y})
             print(x, y)
         else:
             logging.warning("Unknown command %d", cmd)
