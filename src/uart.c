@@ -1,13 +1,18 @@
 #include "stm32f4xx.h"
 #include "uart.h"
+#include "codec.h"
+
+const uint8_t CMD_POS = 0x01;
+const uint8_t CMD_TARGET = 0x02;
+const uint8_t CMD_SET_TARGET = 0x82;
+
 
 const GPIO_TypeDef *uart_gpio = GPIOG;
 const USART_TypeDef *usart = USART6;
 
-uint8_t buffer[BUFFER_MAX];
-int pos = 0;
-
+Frame current_frame;
 QueueHandle_t rx_queue;
+uint8_t encoded[BUFFER_MAX];
 
 
 void uart_send(const uint8_t *data, int size) {
@@ -22,8 +27,11 @@ void uart_send(const uint8_t *data, int size) {
 }
 
 void ctrl_sendtarget(int x, int y) {
-	uint8_t data[] = {x, y};
-	uart_send(data, sizeof(data));
+	uint8_t data[] = {CMD_SET_TARGET, x, y};
+	size_t size = stuffData(data, sizeof(data), encoded);
+	encoded[size + 1] = 0; // frame terminator
+
+	uart_send(encoded, size + 1);
 }
 
 void uart_init() {
@@ -71,6 +79,10 @@ void uart_init() {
 
 	// finally enable uart
 	USART_Cmd(usart, ENABLE);
+
+	// create queue for incoming frames
+	rx_queue = xQueueCreate(sizeof(Frame), 10);
+	assert_param(rx_queue);
 }
 
 void USART6_IRQHandler() {
@@ -79,13 +91,16 @@ void USART6_IRQHandler() {
 	// is received?
 	if(USART_GetITStatus(usart, USART_IT_RXNE)){
 		// get byte and clear interrupt flag
-		buffer[pos] = usart->DR;
+		uint8_t rcv = usart->DR;
+		current_frame.buffer[current_frame.size] = rcv;
 
-		if(pos >= 1) {
-			pos = 0;
-			xQueueSendFromISR(rx_queue, buffer, &xHigherPriorityTaskWoken);
+		if(rcv == 0) {
+			xQueueSendFromISR(rx_queue, &current_frame, &xHigherPriorityTaskWoken);
 		} else {
-			pos = (pos + 1) % sizeof(buffer);
+			current_frame.size++;
+			if(current_frame.size >= BUFFER_MAX) {
+				current_frame.size = 0;
+			}
 		}
 	}
 

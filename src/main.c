@@ -14,11 +14,17 @@ int display_layer = 0;
 void uartTask(void* arg) {
 	uart_init();
 
-	char buffer[BUFFER_MAX];
+	Frame frame;
+	char decoded[2 * BUFFER_MAX];
 	for(;;) {
-		xQueueReceive(rx_queue, buffer, portMAX_DELAY);
-		x = buffer[0];
-		y = buffer[1];
+		xQueueReceive(rx_queue, &frame, portMAX_DELAY);
+
+		unstuffData(frame.buffer, frame.size, decoded);
+
+		if(decoded[0] == 0x01) {
+			x = decoded[1];
+			y = decoded[2];
+		}
 	}
 }
 
@@ -57,7 +63,6 @@ void mainTask(void* arg) {
 		LCD_DrawFullCircle(x * (LCD_PIXEL_WIDTH - 20) / 255 + 10, y * (LCD_PIXEL_HEIGHT - 20) / 255 + 10, 10);
 
 		if(TP_State->TouchDetected) {
-
 			ctrl_sendtarget(TP_State->X * 255 / LCD_PIXEL_WIDTH, TP_State->Y * 255 / LCD_PIXEL_HEIGHT);
 		}
 
@@ -84,9 +89,6 @@ int main() {
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 
 	display_init();
-
-	rx_queue = xQueueCreate(BUFFER_MAX, 10);
-	assert_param(rx_queue);
 
 	xTaskCreate(mainTask, "display", 512, NULL, 1, NULL);
 	xTaskCreate(uartTask, "uart", 512, NULL, 2, NULL);
