@@ -25,14 +25,27 @@ height = 0
 Q = queue.Queue()
 
 
-def processor():
+def position_encode(x, y):
+    x = int(x * 255 / width)
+    y = 255 - int(y * 255 / height)
+
+    return x, y
+
+
+def position_decode(x, y):
+    x = int(x * width / 255)
+    y = int(height - y * height / 255)
+    return x, y
+
+
+def command_processor():
     while True:
         data = Q.get()
 
         cmd = data[0]
         payload = data[1:]
 
-        if cmd == 0x82:
+        if cmd == Comm.CMD_SET_TARGET:
             x = payload[0]
             y = payload[1]
 
@@ -46,9 +59,7 @@ def processor():
             logging.warning("Unknown command %d", cmd)
 
 
-
-
-def reader():
+def uart_reader():
     buff = b""
 
     while True:
@@ -72,7 +83,7 @@ class Comm:
         self.s = s
 
     def set_target_pos(self, x, y):
-        self.send(self.CMD_SET_TARGET, bytes([x, y]))
+        self.send(self.CMD_TARGET, bytes([x, y]))
 
     def set_pos(self, x, y):
         self.send(self.CMD_POS, bytes([x, y]))
@@ -85,11 +96,11 @@ class Comm:
 
 logging.basicConfig(level=logging.INFO)
 
-t = threading.Thread(target=reader)
+t = threading.Thread(target=uart_reader)
 t.setDaemon(True)
 t.start()
 
-t = threading.Thread(target=processor)
+t = threading.Thread(target=command_processor)
 t.setDaemon(True)
 t.start()
 
@@ -103,15 +114,12 @@ for event in client.events():
             height = payload['Height']
         elif event.event == 'measurement':
             if width != 0 and height != 0:
-                x = int(payload['POSX'] * 255 / width)
-                y = 255 - int(payload['POSY'] * 255 / height)
-
+                x, y = position_encode(payload['POSX'], payload['POSY'])
                 comm.set_pos(x, y)
             else:
                 logging.info("No width, height received from balancer")
         elif event.event == 'target_position':
-            x = payload['X']
-            y = payload['Y']
+            x, y = position_encode(payload['X'], payload['Y'])
 
             logging.info("target_position = [%d, %d]", x, y)
             comm.set_target_pos(x, y)

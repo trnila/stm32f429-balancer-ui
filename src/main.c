@@ -5,9 +5,16 @@
 #include "stm32f4xx.h"
 #include "uart.h"
 #include "utils.h"
+#include "codec.h"
 
 
-int x, y;
+typedef struct {
+	int x, y;
+} Position;
+
+
+Position pos = {.x = -1, .y = -1};
+Position target = {.x = -1, .y = -1};
 
 int display_layer = 0;
 
@@ -21,9 +28,16 @@ void uartTask(void* arg) {
 
 		unstuffData(frame.buffer, frame.size, decoded);
 
-		if(decoded[0] == 0x01) {
-			x = decoded[1];
-			y = decoded[2];
+		if(decoded[0] == CMD_POS) {
+			taskENTER_CRITICAL();
+			pos.x = decoded[1];
+			pos.y = decoded[2];
+			taskEXIT_CRITICAL();
+		} else if(decoded[0] == CMD_TARGET) {
+			taskENTER_CRITICAL();
+			target.x = decoded[1];
+			target.y = decoded[2];
+			taskEXIT_CRITICAL();
 		}
 	}
 }
@@ -38,10 +52,12 @@ void display_init() {
 
 void swap_buffers() {
 	//while (!(LTDC->CDSR & LTDC_CDSR_VSYNCS));
+	taskENTER_CRITICAL();
 	LTDC_LayerCmd(LTDC_Layer1 + display_layer, ENABLE);
 	display_layer ^= 0x1;
 	LCD_SetLayer(display_layer);
 	LTDC_LayerCmd(LTDC_Layer1 + display_layer, DISABLE);
+	taskEXIT_CRITICAL();
 }
 
 void mainTask(void* arg) {
@@ -59,8 +75,17 @@ void mainTask(void* arg) {
 		LCD_DrawFullRect(0, 0, LCD_PIXEL_WIDTH, LCD_PIXEL_HEIGHT);
 
 		// draw circle
-		LCD_SetTextColor(LCD_COLOR_BLACK);
-		LCD_DrawFullCircle(x * (LCD_PIXEL_WIDTH - 20) / 255 + 10, y * (LCD_PIXEL_HEIGHT - 20) / 255 + 10, 10);
+		taskENTER_CRITICAL();
+		if(pos.x >= 0 && pos.y >= 0) {
+			LCD_SetTextColor(LCD_COLOR_BLACK);
+			LCD_DrawCircle(pos.x * (LCD_PIXEL_WIDTH - 20) / 255 + 10, pos.y * (LCD_PIXEL_HEIGHT - 20) / 255 + 10, 10);
+		}
+
+		if(target.x >= 0 && target.y >= 0) {
+			LCD_SetTextColor(LCD_COLOR_BLACK);
+			LCD_DrawFullCircle(target.x * (LCD_PIXEL_WIDTH - 20) / 255 + 10, target.y * (LCD_PIXEL_HEIGHT - 20) / 255 + 10, 10);
+		}
+		taskEXIT_CRITICAL();
 
 		if(TP_State->TouchDetected) {
 			ctrl_sendtarget(TP_State->X * 255 / LCD_PIXEL_WIDTH, TP_State->Y * 255 / LCD_PIXEL_HEIGHT);

@@ -4,6 +4,10 @@
 
 #define BUFFER_MAX 8
 
+#define CMD_POS 0x01
+#define CMD_TARGET 0x02
+#define CMD_SET_TARGET 0x82
+
 typedef struct {
 	uint8_t buffer[BUFFER_MAX];
 	size_t size;

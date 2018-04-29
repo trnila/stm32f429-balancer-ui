@@ -2,11 +2,6 @@
 #include "uart.h"
 #include "codec.h"
 
-const uint8_t CMD_POS = 0x01;
-const uint8_t CMD_TARGET = 0x02;
-const uint8_t CMD_SET_TARGET = 0x82;
-
-
 const GPIO_TypeDef *uart_gpio = GPIOG;
 const USART_TypeDef *usart = USART6;
 
