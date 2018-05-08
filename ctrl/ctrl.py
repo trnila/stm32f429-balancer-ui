@@ -20,14 +20,25 @@ parser.add_argument('--baudrate', default=9600, help='serial device baud rate')
 args = parser.parse_args()
 
 s = serial.Serial(args.serial, baudrate=args.baudrate, timeout=0.02)
-response = requests.get("{}/events/measurements".format(args.api_url), stream=True)
-client = sseclient.SSEClient(response)
 
 width = 0
 height = 0
 
 
 Q = queue.Queue()
+
+def sse_stream():
+    while True:
+        try:
+            logging.info("Connecting to sse stream at %s", args.api_url)
+            response = requests.get("{}/events/measurements".format(args.api_url), stream=True)
+            client = sseclient.SSEClient(response)
+
+            yield from client.events()
+        except BaseException as e:
+            logging.exception(e)
+        time.sleep(1)
+
 
 
 def position_encode(x, y):
@@ -111,7 +122,7 @@ t.start()
 
 comm = Comm(s)
 
-for event in client.events():
+for event in sse_stream():
         payload = json.loads(event.data)
 
         if event.event == "dimension":
