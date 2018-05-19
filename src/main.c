@@ -12,11 +12,18 @@ typedef struct {
 	int x, y;
 } Position;
 
+typedef enum {
+	NOT_CONNECTED,
+	CONNECTED,
+	RUNNING
+} State;
 
+State state = NOT_CONNECTED;
 Position pos = {.x = -1, .y = -1};
 Position target = {.x = -1, .y = -1};
-
 int display_layer = 0;
+
+uint8_t iterations = 0;
 
 void uartTask(void* arg) {
 	uart_init();
@@ -32,11 +39,17 @@ void uartTask(void* arg) {
 			taskENTER_CRITICAL();
 			pos.x = decoded[1];
 			pos.y = decoded[2];
+
+			state = RUNNING;
+			iterations = 0;
 			taskEXIT_CRITICAL();
 		} else if(decoded[0] == CMD_TARGET) {
 			taskENTER_CRITICAL();
 			target.x = decoded[1];
 			target.y = decoded[2];
+
+			state = RUNNING;
+			iterations = 0;
 			taskEXIT_CRITICAL();
 		}
 	}
@@ -57,6 +70,7 @@ void swap_buffers() {
 	display_layer ^= 0x1;
 	LCD_SetLayer(display_layer);
 	LTDC_LayerCmd(LTDC_Layer1 + display_layer, DISABLE);
+	LTDC_ReloadConfig(LTDC_IMReload);
 	taskEXIT_CRITICAL();
 }
 
@@ -65,7 +79,14 @@ void mainTask(void* arg) {
 
 
 	for(;;) {
-		TP_State = IOE_TP_GetState();
+		taskENTER_CRITICAL();
+		if(state != NOT_CONNECTED) {
+			iterations = (iterations + 1);
+			if(iterations > 100) {
+				state = CONNECTED;
+			}
+		}
+		taskEXIT_CRITICAL();
 
 		// use double buffering - render from one buffer, draw to another one
 		swap_buffers();
@@ -73,25 +94,36 @@ void mainTask(void* arg) {
 		// clear screen
 		LCD_SetTextColor(LCD_COLOR_YELLOW);
 		LCD_DrawFullRect(0, 0, LCD_PIXEL_WIDTH, LCD_PIXEL_HEIGHT);
+		LCD_SetBackColor(LCD_COLOR_YELLOW);
 
-		// draw circle
-		taskENTER_CRITICAL();
-		if(pos.x >= 0 && pos.y >= 0) {
+		if(state == NOT_CONNECTED) {
 			LCD_SetTextColor(LCD_COLOR_BLACK);
-			LCD_DrawCircle(pos.x * (LCD_PIXEL_WIDTH - 20) / 255 + 10, pos.y * (LCD_PIXEL_HEIGHT - 20) / 255 + 10, 10);
-		}
-
-		if(target.x >= 0 && target.y >= 0) {
+			LCD_DisplayStringLine(LCD_LINE_6, (uint8_t*) " connecting..");
+		} else if(state == CONNECTED) {
 			LCD_SetTextColor(LCD_COLOR_BLACK);
-			LCD_DrawFullCircle(target.x * (LCD_PIXEL_WIDTH - 20) / 255 + 10, target.y * (LCD_PIXEL_HEIGHT - 20) / 255 + 10, 10);
-		}
-		taskEXIT_CRITICAL();
+			LCD_DisplayStringLine(LCD_LINE_6, (uint8_t*) "   no data...");
+		} else if(state == RUNNING) {
+			TP_State = IOE_TP_GetState();
 
-		if(TP_State->TouchDetected) {
-			ctrl_sendtarget(TP_State->X * 255 / LCD_PIXEL_WIDTH, TP_State->Y * 255 / LCD_PIXEL_HEIGHT);
-		}
+			// draw circle
+			if(pos.x >= 0 && pos.y >= 0) {
+				LCD_SetTextColor(LCD_COLOR_BLACK);
+				LCD_DrawCircle(pos.x * (LCD_PIXEL_WIDTH - 20) / 255 + 10, pos.y * (LCD_PIXEL_HEIGHT - 20) / 255 + 10, 10);
+			}
 
-		vTaskDelay(30);
+			if(target.x >= 0 && target.y >= 0) {
+				LCD_SetTextColor(LCD_COLOR_BLACK);
+				LCD_DrawFullCircle(target.x * (LCD_PIXEL_WIDTH - 20) / 255 + 10, target.y * (LCD_PIXEL_HEIGHT - 20) / 255 + 10, 10);
+			}
+
+			if(TP_State->TouchDetected) {
+				ctrl_sendtarget(TP_State->X * 255 / LCD_PIXEL_WIDTH, TP_State->Y * 255 / LCD_PIXEL_HEIGHT);
+			}
+
+			vTaskDelay(30);
+		} else {
+			halt();
+		}
 	}
 }
 
