@@ -26,8 +26,6 @@ int display_layer = 0;
 uint8_t iterations = 0;
 
 void uartTask(void* arg) {
-	uart_init();
-
 	Frame frame;
 	char decoded[2 * BUFFER_MAX];
 	for(;;) {
@@ -144,6 +142,7 @@ int main() {
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 
 	display_init();
+	uart_init();
 
 	xTaskCreate(mainTask, "display", 512, NULL, 1, NULL);
 	xTaskCreate(uartTask, "uart", 512, NULL, 2, NULL);
