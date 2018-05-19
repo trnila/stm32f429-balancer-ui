@@ -65,13 +65,11 @@ void display_init() {
 
 void swap_buffers() {
 	//while (!(LTDC->CDSR & LTDC_CDSR_VSYNCS));
-	taskENTER_CRITICAL();
 	LTDC_LayerCmd(LTDC_Layer1 + display_layer, ENABLE);
 	display_layer ^= 0x1;
 	LCD_SetLayer(display_layer);
 	LTDC_LayerCmd(LTDC_Layer1 + display_layer, DISABLE);
 	LTDC_ReloadConfig(LTDC_IMReload);
-	taskEXIT_CRITICAL();
 }
 
 void mainTask(void* arg) {
