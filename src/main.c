@@ -113,7 +113,21 @@ void mainTask(void* arg) {
 			}
 
 			if(TP_State->TouchDetected) {
-				ctrl_sendtarget(TP_State->X * 255 / LCD_PIXEL_WIDTH, TP_State->Y * 255 / LCD_PIXEL_HEIGHT);
+				int threshold = 10;
+				int validTouch = TP_State->X > threshold && TP_State->X < LCD_PIXEL_WIDTH - threshold;
+				validTouch &= TP_State->Y > threshold && TP_State->Y < LCD_PIXEL_HEIGHT - threshold;
+				if(validTouch) {
+					int X = TP_State->X * 255 / LCD_PIXEL_WIDTH;
+					int Y = TP_State->Y * 255 / LCD_PIXEL_HEIGHT;
+
+					// set current target optimistically
+					taskENTER_CRITICAL();
+					target.x = X;
+					target.y = Y;
+					taskEXIT_CRITICAL();
+
+					ctrl_sendtarget(X, Y);
+				}
 			}
 
 			vTaskDelay(30);
