@@ -81,6 +81,5 @@ char serial_read(Serial *s, char* data) {
 		s->read = read(s->fd, s->buffer, sizeof(s->buffer));
 		s->processed = 0;
 	}
-
 }
 

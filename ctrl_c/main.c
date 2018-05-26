@@ -43,7 +43,9 @@ int extract_num(const char *str, const char* key) {
 	return x;
 }
 
-void process_events(Context *ctx) {
+void* process_events(void *arg) {
+	Context *ctx = (Context*) arg;
+
 	for(;;) {
 		Event evt = api_get_event(ctx->api);
 		if(width > 0 && height > 0 && strcmp(evt.event, "measurement") == 0) {
@@ -116,7 +118,9 @@ int main(int argc, char *argv[]) {
 	Context ctx = {.serial = serial, .api = api};
 	pthread_t t;
 	pthread_create(&t, NULL, send_touches, &ctx);
+	pthread_detach(t);
 	pthread_create(&t, NULL, process_events, &ctx);
+	pthread_detach(t);
 
 	api_listen_events(api);
 	return 0;

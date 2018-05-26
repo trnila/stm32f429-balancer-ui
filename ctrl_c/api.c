@@ -116,11 +116,11 @@ void api_worker(Api *api) {
 		}
 		if(FD_ISSET(api->http_fd, &fds)) {
 			if(read(api->http_fd, buffer, sizeof(buffer)) == 0) {
-				DEBUG("connection closed, reopening...");
+				DEBUG("connection closed, reopening...\n");
 				// reopen connection
 				api->http_fd = try_connect(api->host);
 				if(api->http_fd < 0) {
-					DEBUG("could not reopen connection");
+					DEBUG("could not reopen connection\n");
 				}
 			}
 		}
@@ -128,19 +128,22 @@ void api_worker(Api *api) {
 }
 
 
-
-void api_listen_events(Api *api) {
+static int connect_sse(Api *api) {
 	int fd = try_connect(api->host);
 	if(fd < 0) {
-		fprintf(stderr, "Could not connect\n");
-		exit(1);
+		DEBUG("Could not connect to SSE stream\n");
+		return -1;
 	}
 
-	char buffer[1024];
-
+	char buffer[64];
 	snprintf(buffer, sizeof(buffer), "GET /events/measurements HTTP/1.1\nHost: %s\n\n", api->host);
 	write(fd, buffer, strlen(buffer));
 
+	return fd;
+}
+
+
+void api_listen_events(Api *api) {
 	typedef enum {
 		FIELD_NONE,
 		FIELD_EVENT,
@@ -149,12 +152,27 @@ void api_listen_events(Api *api) {
 
 	Event evt;
 	char data[512];
+	char buffer[1024];
 	int data_pos = 0;
 	int drop = 0;
 	Field field;
 	int trim = 0;
+	int fd = -1;
 	while(1) {
+		if(fd <= 0) {
+			fd = connect_sse(api);
+			if(fd < 0) {
+				sleep(1);
+			}
+			continue;
+		}
+
 		int n = read(fd, buffer, sizeof(buffer));
+		if(n <= 0) {
+			DEBUG("Disconnected from SSE stream, reconnecting...");
+			fd = -1;
+			continue;
+		}
 
 		for(int i = 0; i < n; i++) {
 			if(buffer[i] == '\n') {

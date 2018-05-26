@@ -20,3 +20,4 @@ void api_send(Api *api, char *buffer);
 void api_worker(Api* api);
 void api_listen_events(Api *api);
 Event api_get_event(Api *api);
+void api_set_target(Api *api, int x, int y);
