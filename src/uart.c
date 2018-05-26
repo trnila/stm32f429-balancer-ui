@@ -1,3 +1,4 @@
+#include <memory.h>
 #include "stm32f4xx.h"
 #include "uart.h"
 #include "codec.h"
@@ -7,7 +8,7 @@ const USART_TypeDef *usart = USART6;
 
 Frame current_frame;
 QueueHandle_t rx_queue;
-uint8_t encoded[BUFFER_MAX];
+uint8_t encoded[BUFFER_MAX], prepare_buffer[BUFFER_MAX];
 
 
 void uart_send(const uint8_t *data, int size) {
@@ -21,12 +22,27 @@ void uart_send(const uint8_t *data, int size) {
 	}
 }
 
-void ctrl_sendtarget(int x, int y) {
-	uint8_t data[] = {CMD_SET_TARGET, x, y};
-	size_t size = stuffData(data, sizeof(data), encoded);
-	encoded[size + 1] = 0; // frame terminator
+void ctrl_sendcmd(char cmd, char*data, int size) {
+	if(size >= sizeof(prepare_buffer)) {
+		halt();
+	}
 
-	uart_send(encoded, size + 1);
+	prepare_buffer[0] = cmd;
+	memcpy(prepare_buffer + 1, data, size);
+
+	// encode frame
+	int frame_len = stuffData(prepare_buffer, size + 1, encoded);
+	encoded[frame_len++] = 0; // frame terminator
+	uart_send(encoded, frame_len);
+}
+
+void ctrl_sendtarget(int x, int y) {
+	uint8_t data[] = {x, y};
+	ctrl_sendcmd(CMD_SET_TARGET, data, sizeof(data));
+}
+
+void ctrl_connect() {
+	ctrl_sendcmd(CMD_CONNECT, NULL, 0);
 }
 
 void uart_init() {

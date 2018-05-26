@@ -1,0 +1,11 @@
+[Service]
+ExecStart=/usr/local/bin/frontend_ctrlc localhost
+User=pi
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
