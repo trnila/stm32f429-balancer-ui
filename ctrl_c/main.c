@@ -21,6 +21,10 @@ typedef struct {
 } Context;
 
 int width = 0, height = 0;
+int targetX, targetY;
+
+pthread_mutex_t announce_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 int extract_num(const char *str, const char* key) {
 	char needle[strlen(key) + 3];
@@ -43,6 +47,13 @@ int extract_num(const char *str, const char* key) {
 	return x;
 }
 
+void announce_target(Serial* s) {
+	char pos[] = {targetX * 255 / width, targetY * 255 / height};
+	pthread_mutex_lock(&announce_mutex);
+	serial_send(s, CMD_TARGET, pos, sizeof(pos));	
+	pthread_mutex_unlock(&announce_mutex);
+}
+
 void* process_events(void *arg) {
 	Context *ctx = (Context*) arg;
 
@@ -53,7 +64,7 @@ void* process_events(void *arg) {
 			int y = extract_num(evt.data, "POSY");
 
 			if(x >= 0 && y >= 0) {
-				DEBUG("setting position [%d, %d]\n", x, y);
+//				DEBUG("setting position [%d, %d]\n", x, y);
 				char pos[] = {x * 255 / width, y * 255 / height};
 				serial_send(ctx->serial, CMD_POS, pos, sizeof(pos));	
 			}
@@ -68,8 +79,10 @@ void* process_events(void *arg) {
 
 			if(x >= 0 && y >= 0) {
 				DEBUG("setting target [%d, %d]\n", x, y);
-				char pos[] = {x * 255 / width, y * 255 / height};
-				serial_send(ctx->serial, CMD_TARGET, pos, sizeof(pos));	
+				targetX = x;
+				targetY = y;
+
+				announce_target(ctx->serial);
 			}
 		} else {
 			DEBUG("unknown event '%s'\n", evt.event);
@@ -85,7 +98,10 @@ void* send_touches(void* arg) {
 		serial_read(ctx->serial, data);
 		if(data[0] == CMD_SET_TARGET) {
 		       api_set_target(ctx->api, data[1] * width / 255, data[2] * height / 255);
-		} else {
+		} else if(data[0] == CMD_CONNECT) {
+			DEBUG("Display connected\n");
+			announce_target(ctx->serial);
+	      	} else {
 			DEBUG("Unknown CMD received from display: %d\n", data[0]);
 		}
 	}

@@ -90,6 +90,9 @@ void mainTask(void* arg) {
 		if(!connected) {
 			LCD_SetTextColor(LCD_COLOR_BLACK);
 			LCD_DisplayStringLine(LCD_LINE_6, (uint8_t*) " connecting..");
+
+			ctrl_connect();
+			vTaskDelay(250);
 		} else {
 			TP_State = IOE_TP_GetState();
 
