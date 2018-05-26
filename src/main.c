@@ -12,13 +12,8 @@ typedef struct {
 	int x, y;
 } Position;
 
-typedef enum {
-	NOT_CONNECTED,
-	CONNECTED,
-	RUNNING
-} State;
 
-State state = NOT_CONNECTED;
+int connected = 0;
 Position pos = {.x = -1, .y = -1};
 Position target = {.x = -1, .y = -1};
 int display_layer = 0;
@@ -38,7 +33,7 @@ void uartTask(void* arg) {
 			pos.x = decoded[1];
 			pos.y = decoded[2];
 
-			state = RUNNING;
+			connected = 1;
 			iterations = 0;
 			taskEXIT_CRITICAL();
 		} else if(decoded[0] == CMD_TARGET) {
@@ -46,7 +41,7 @@ void uartTask(void* arg) {
 			target.x = decoded[1];
 			target.y = decoded[2];
 
-			state = RUNNING;
+			connected = 1;
 			iterations = 0;
 			taskEXIT_CRITICAL();
 		}
@@ -76,10 +71,10 @@ void mainTask(void* arg) {
 
 	for(;;) {
 		taskENTER_CRITICAL();
-		if(state != NOT_CONNECTED) {
+		if(connected) {
 			iterations = (iterations + 1);
 			if(iterations > 100) {
-				state = CONNECTED;
+				connected = 0;
 			}
 		}
 		taskEXIT_CRITICAL();
@@ -92,13 +87,10 @@ void mainTask(void* arg) {
 		LCD_DrawFullRect(0, 0, LCD_PIXEL_WIDTH, LCD_PIXEL_HEIGHT);
 		LCD_SetBackColor(LCD_COLOR_YELLOW);
 
-		if(state == NOT_CONNECTED) {
+		if(!connected) {
 			LCD_SetTextColor(LCD_COLOR_BLACK);
 			LCD_DisplayStringLine(LCD_LINE_6, (uint8_t*) " connecting..");
-		} else if(state == CONNECTED) {
-			LCD_SetTextColor(LCD_COLOR_BLACK);
-			LCD_DisplayStringLine(LCD_LINE_6, (uint8_t*) "   no data...");
-		} else if(state == RUNNING) {
+		} else {
 			TP_State = IOE_TP_GetState();
 
 			// draw circle
@@ -131,8 +123,6 @@ void mainTask(void* arg) {
 			}
 
 			vTaskDelay(30);
-		} else {
-			halt();
 		}
 	}
 }
